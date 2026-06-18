@@ -124,37 +124,72 @@
 // });
 
 
-// src/components/Chatbot.tsx
 import { useState } from 'react';
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
+
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hi! I\'m EcoBot. How can I assist you today?' }
+    {
+      role: 'assistant',
+      content: "Hi! I'm EcoBot. How can I assist you today?",
+    },
   ]);
+
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    const newMessages = [...messages, { role: 'user', content: input }];
+    const newMessages = [
+      ...messages,
+      {
+        role: 'user',
+        content: input,
+      },
+    ];
+
     setMessages(newMessages);
     setInput('');
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/chat', {
+      const response = await fetch('http://localhost:5000/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: newMessages,
+        }),
       });
 
+      if (!response.ok) {
+        throw new Error('Server Error');
+      }
+
       const data = await response.json();
-      const reply = data.choices?.[0]?.message?.content || 'Sorry, no reply.';
-      setMessages([...newMessages, { role: 'assistant', content: reply }]);
-    } catch (err) {
-      setMessages([...newMessages, { role: 'assistant', content: '❌ Could not reach server.' }]);
+
+      const reply = data.reply || 'Sorry, no response received.';
+
+      setMessages([
+        ...newMessages,
+        {
+          role: 'assistant',
+          content: reply,
+        },
+      ]);
+    } catch (error) {
+      console.error('Chatbot Error:', error);
+
+      setMessages([
+        ...newMessages,
+        {
+          role: 'assistant',
+          content: '❌ Could not reach server.',
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -173,32 +208,45 @@ const Chatbot = () => {
         <div className="w-80 bg-white border rounded-lg shadow-lg flex flex-col overflow-hidden">
           <div className="bg-blue-600 text-white px-4 py-2 flex justify-between items-center">
             <span>Ask EcoBot</span>
-            <button onClick={() => setIsOpen(false)}>✖</button>
+
+            <button onClick={() => setIsOpen(false)}>
+              ✖
+            </button>
           </div>
+
           <div className="p-3 h-80 overflow-y-auto text-sm space-y-2">
-            {messages.map((msg, i) => (
+            {messages.map((msg, index) => (
               <div
-                key={i}
+                key={index}
                 className={`p-2 rounded-md ${
-                  msg.role === 'user' ? 'bg-blue-100 text-right' : 'bg-gray-100 text-left'
+                  msg.role === 'user'
+                    ? 'bg-blue-100 text-right'
+                    : 'bg-gray-100 text-left'
                 }`}
               >
                 {msg.content}
               </div>
             ))}
           </div>
+
           <div className="p-2 border-t flex">
             <input
+              type="text"
               className="flex-1 px-2 py-1 border rounded-md"
+              placeholder="Ask a question..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a question..."
-              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  sendMessage();
+                }
+              }}
             />
+
             <button
-              className="ml-2 bg-blue-600 text-white px-3 py-1 rounded-md"
               onClick={sendMessage}
               disabled={loading}
+              className="ml-2 bg-blue-600 text-white px-3 py-1 rounded-md"
             >
               {loading ? '...' : 'Send'}
             </button>
